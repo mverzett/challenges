@@ -1,4 +1,4 @@
 challenges
 ==========
 
-Little scripts for programming challenges
+Little collection of solved programming challenges
