@@ -10,23 +10,6 @@
 #  How many points can the monkey access if it starts at (0, 0), including (0, 0) itself?
 #
 
-# ANALYTICAL SOLUTION
-#
-# Given the absolute value and the commutativity of sum, the problem is clearly symmetric with respect to each quadrant. 
-# Therefore we can compute the solution for the first one (x > 0 and y > 0) and then multiply by 4. The first integer with sum of its digits equals 19
-# is 199, so every tile from (0,1) to (0, 199) will be accessible and linked, tiles in the 1 column will get up only to 198 and so on up to column 10, 
-# where the maximum resets to 198. The number of available tiles will be therefore:
-#
-# s = 0
-# for i in range(1, 199+1):
-#     for j in range(1, i+1):
-#             s += j
-# 
-# s*4 + 1 #four quadrants plus (0, 0)
-# 5333201
-#
-# But I guess you wanted a recursive walker so here it is
-
 import itertools
 from pdb import set_trace
 import sys
@@ -78,4 +61,22 @@ class Walker(object):
 
 chuck_norris = Walker()
 chuck_norris.walk((0,0))
-print len(chuck_norris.visited_tiles)
+num_tiles    = len(chuck_norris.visited_tiles)
+print "number of tiles visited: %i" % num_tiles
+tiles_on_x_axis = len(
+    filter(
+        lambda x: x[1] == 0, chuck_norris.visited_tiles
+        )
+    )
+tiles_on_y_axis = len(
+    filter(
+        lambda x: x[0] == 0, chuck_norris.visited_tiles
+        )
+    )
+assert(tiles_on_x_axis == tiles_on_y_axis)
+#use symmetry to guess the total number of accessible tiles
+accessible_tiles = 4*(num_tiles - 2*tiles_on_y_axis) #Symmetry in X and Y axis, do not count tiles on the axes
+accessible_tiles += (2*tiles_on_y_axis + 2*tiles_on_x_axis) #add tiles on the axes
+accessible_tiles -= 3 #remove the origin, that has been double-counted three times (is present in both the axes)
+print "total number of accessible tiles: %i" % accessible_tiles
+
