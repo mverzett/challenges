@@ -15,7 +15,31 @@ from pdb import set_trace
 import sys
 import ROOT
 sys.setrecursionlimit((199*2)**2)
+from functools import update_wrapper
 
+def decorator(d):
+    "Make function d a decorator that wraps function fn"
+    return lambda fn: update_wrapper(d(fn),fn)
+
+decorator = decorator(decorator)
+
+@decorator
+def memo(fn):
+    "Decorato to memoize (cache) results of a function"
+    cache = {}
+    def _f(*args, **kwargs):
+        key = (args, tuple(kwargs.items()))
+        try: #check if we have it in cache
+            return cache[key]
+        except KeyError: #No, we don't
+            cache[key] = result = fn(*args, **kwargs)
+            return result
+        except TypeError: #Actually, the args cannot even be a key of dict (like lists)
+                          #print "this cannot be cached: %s" % type(args)
+            return fn(*args, **kwargs)
+    return _f
+
+@memo
 def sum_digits(number):
     mod = number % 10
     div = number / 10
@@ -50,7 +74,7 @@ class Walker(object):
 
     def walk(self, starting_point):
         self.visited_tiles.add(starting_point)
-        self.graph.SetPoint(self.numpoints, *starting_point)
+        #self.graph.SetPoint(self.numpoints, *starting_point)
         self.numpoints += 1
         if self.numpoints % 1000 == 0:
             self.graph.Draw('AP')
@@ -58,6 +82,38 @@ class Walker(object):
         for new_point in self.look_around(starting_point):
             self.walk(new_point)
         return
+
+    def stack_walk(self, starting_point):
+        '''non-recursive version of walk'''
+        self.visited_tiles = set() #empty set, free some memory
+        visited_tiles = set() #local version
+        boundary = self.boundary #minimize self calls
+        stack = [starting_point]
+        visited_tiles.add(starting_point)
+        iteration = 0
+        while stack: #test if empty
+            iteration += 1
+            point = stack.pop()
+            self.graph.SetPoint(iteration, *point)
+            if iteration % 1000 == 0:
+                self.graph.Draw('AP')
+                self.canvas.Update()
+            x, y  = point
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                newx = x+dx
+                newy = y+dy
+                sumx = sum_digits(abs(newx))
+                sumy = sum_digits(abs(newy))
+                #check boundary condition
+                if sumx + sumy > boundary:
+                    continue
+                #check if already covered
+                if (newx, newy) in visited_tiles:
+                    continue
+                visited_tiles.add((newx, newy))
+                stack.append((newx, newy))
+        return visited_tiles
+
 
 chuck_norris = Walker()
 chuck_norris.walk((0,0))
@@ -79,4 +135,19 @@ accessible_tiles = 4*(num_tiles - 2*tiles_on_y_axis) #Symmetry in X and Y axis, 
 accessible_tiles += (2*tiles_on_y_axis + 2*tiles_on_x_axis) #add tiles on the axes
 accessible_tiles -= 3 #remove the origin, that has been double-counted three times (is present in both the axes)
 print "total number of accessible tiles: %i" % accessible_tiles
+visited_tiles = chuck_norris.stack_walk((0,0))
+print "as from stack walk: %i" % len(visited_tiles)
 
+#lines = open('tiles.txt').readlines()
+#lines = [i.strip() for i in lines]
+#lines = [tuple(i.split()) for i in lines]
+#tiles = [(int(x),int(y)) for x,y in lines]
+#del lines
+#cpp_tiles = set(tiles)
+#print len(cpp_tiles) == len(tiles)
+#del tiles
+#print cpp_tiles.issubset(visited_tiles)
+#difference = visited_tiles.difference(cpp_tiles)
+#del cpp_tiles
+#del visited_tiles 
+#is_ok = [ sum_digits(abs(x)) + sum_digits(abs(y)) for x, y in diff]
